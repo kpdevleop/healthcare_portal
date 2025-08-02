@@ -1,15 +1,5 @@
 package com.healthcare.service;
 
-import com.healthcare.dto.AuthResponseDTO;
-import com.healthcare.dto.UserSignInDTO; // <--- IMPORTANT: Ensure this is your DTO package and class name (e.g., 'com.healthcare.dto.UserSignInDTO')
-import com.healthcare.dto.UserSignUpDTO; // <--- IMPORTANT: Ensure this is your DTO package and class name
-import com.healthcare.entity.Department;
-import com.healthcare.entity.User;
-import com.healthcare.entity.UserRole;
-import com.healthcare.custom_exceptions.ResourceNotFoundException;
-import com.healthcare.repository.DepartmentRepository; // Make sure this exists
-import com.healthcare.repository.UserRepository; // <--- IMPORTANT: Ensure this matches your repository package and name
-import com.healthcare.security.JwtUtil; // Make sure this exists
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +9,17 @@ import org.springframework.security.core.userdetails.UserDetails; // Make sure t
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.healthcare.custom_exceptions.ResourceNotFoundException;
+import com.healthcare.dto.AuthResponseDTO;
+import com.healthcare.dto.UserSignInDTO; // <--- IMPORTANT: Ensure this is your DTO package and class name (e.g., 'com.healthcare.dto.UserSignInDTO')
+import com.healthcare.dto.UserSignUpDTO; // <--- IMPORTANT: Ensure this is your DTO package and class name
+import com.healthcare.entity.Department;
+import com.healthcare.entity.User;
+import com.healthcare.entity.UserRole;
+import com.healthcare.repository.DepartmentRepository; // Make sure this exists
+import com.healthcare.repository.UserRepository; // <--- IMPORTANT: Ensure this matches your repository package and name
+import com.healthcare.security.JwtUtil; // Make sure this exists
 
 @Service
 @Transactional
@@ -36,12 +37,17 @@ public class AuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Autowired(required = false) // Use this if DepartmentRepository might not always be available (e.g. during initial setup)
+    @Autowired
     private DepartmentRepository departmentRepository;
 
     public AuthResponseDTO signUpUser(UserSignUpDTO signUpDto) {
         if (userRepository.findByEmail(signUpDto.getEmail()).isPresent()) { // <--- Correct usage
             throw new IllegalArgumentException("User with this email already exists.");
+        }
+
+        // Validate password before encoding
+        if (!isPasswordValid(signUpDto.getPassword())) {
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
         }
 
         User newUser = User.builder()
@@ -60,18 +66,18 @@ public class AuthService {
             newUser.setGender(signUpDto.getGender());
             newUser.setAddress(signUpDto.getAddress());
         } else if (signUpDto.getRole() == UserRole.ROLE_DOCTOR) {
+            // Validate department for doctors
+            if (signUpDto.getDepartmentId() == null) {
+                throw new IllegalArgumentException("Department is mandatory for doctor registration.");
+            }
+            
+            Department department = departmentRepository.findById(signUpDto.getDepartmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + signUpDto.getDepartmentId()));
+            newUser.setDepartment(department);
+            
             newUser.setSpecialization(signUpDto.getSpecialization());
             newUser.setLicenseNumber(signUpDto.getLicenseNumber());
             newUser.setExperienceYears(signUpDto.getExperienceYears());
-            if (signUpDto.getDepartmentId() != null) {
-                // Ensure DepartmentRepository is not null before using it
-                if (departmentRepository == null) {
-                    throw new IllegalStateException("DepartmentRepository is not available for doctor registration.");
-                }
-                Department department = departmentRepository.findById(signUpDto.getDepartmentId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + signUpDto.getDepartmentId()));
-                newUser.setDepartment(department);
-            }
         }
         // For ROLE_ADMIN or other roles, no specific fields need to be set here
 
@@ -82,31 +88,51 @@ public class AuthService {
         return signInUser(new UserSignInDTO(signUpDto.getEmail(), signUpDto.getPassword()));
     }
 
-    public AuthResponseDTO signInUser(UserSignInDTO signInDto) {
-        try {
-            // Spring Security authentication
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(signInDto.getEmail(), signInDto.getPassword()));
+   public AuthResponseDTO signInUser(UserSignInDTO signInDto) {
+    try {
+        // Spring Security authentication
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(signInDto.getEmail(), signInDto.getPassword()));
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            String jwt = jwtUtil.generateToken(userDetails.getUsername()); // Assuming username is email
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found after authentication."));
 
-            User user = userRepository.findByEmail(userDetails.getUsername()) // <--- Correct usage
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found after authentication."));
+        String jwt = jwtUtil.generateToken(user); // Pass the User object!
 
-            return new AuthResponseDTO(
-                    jwt,
-                    user.getId(),
-                    user.getEmail(),
-                    user.getRole(),
-                    user.getFirstName(),
-                    user.getLastName()
-            );
-        } catch (Exception e) {
-            // Handle specific authentication exceptions (e.g., BadCredentialsException)
-            throw new IllegalArgumentException("Invalid email or password", e);
+        return new AuthResponseDTO(
+                jwt, // token
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getFirstName(),
+                user.getLastName()
+        );
+    } catch (Exception e) {
+        throw new IllegalArgumentException("Invalid email or password", e);
+    }
+}
+
+    // Password validation method
+    private boolean isPasswordValid(String password) {
+        if (password == null || password.length() < 8) {
+            return false;
         }
+        
+        boolean hasLower = false;
+        boolean hasUpper = false;
+        boolean hasDigit = false;
+        boolean hasSpecial = false;
+        
+        for (char c : password.toCharArray()) {
+            if (Character.isLowerCase(c)) hasLower = true;
+            else if (Character.isUpperCase(c)) hasUpper = true;
+            else if (Character.isDigit(c)) hasDigit = true;
+            else hasSpecial = true;
+        }
+        
+        return hasLower && hasUpper && hasDigit && hasSpecial;
     }
 }

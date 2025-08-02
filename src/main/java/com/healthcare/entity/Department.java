@@ -1,8 +1,11 @@
 package com.healthcare.entity;
 
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Lob;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -29,5 +32,8 @@ public class Department extends BaseEntity {
 	@Lob // Used for TEXT type in MySQL
 	@Column(columnDefinition = "TEXT")
 	private String description;
+	
+	@OneToMany(mappedBy = "department")
+	private List<User> users;
 
 }

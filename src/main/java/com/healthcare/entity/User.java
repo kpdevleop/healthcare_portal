@@ -10,7 +10,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -109,11 +108,10 @@ public class User extends BaseEntity implements UserDetails {
 
 
     // Implementation of UserDetails methods (REQUIRED if 'implements UserDetails')
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(this.role.name()));
-    }
-
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+	    return List.of(new SimpleGrantedAuthority(this.role.name()));
+	}
     @Override
     public String getUsername() {
         return this.email; // Email is used as the username for authentication
@@ -138,5 +136,27 @@ public class User extends BaseEntity implements UserDetails {
     public boolean isEnabled() {
         return true; // For now, assuming accounts are always enabled. Implement actual logic if needed.
     }
+    
+    // Custom password validation method
+    public boolean isPasswordValid() {
+        if (password == null || password.length() < 8) {
+            return false;
+        }
+        
+        boolean hasLower = false;
+        boolean hasUpper = false;
+        boolean hasDigit = false;
+        boolean hasSpecial = false;
+        
+        for (char c : password.toCharArray()) {
+            if (Character.isLowerCase(c)) hasLower = true;
+            else if (Character.isUpperCase(c)) hasUpper = true;
+            else if (Character.isDigit(c)) hasDigit = true;
+            else hasSpecial = true;
+        }
+        
+        return hasLower && hasUpper && hasDigit && hasSpecial;
+    }
+    
     // End of UserDetails implementations
 }

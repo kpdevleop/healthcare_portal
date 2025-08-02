@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException e) {
 		System.out.println("in catch - Res not found exc");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)// SC 404
-				.body(new ApiResponse(e.getMessage()));
+				.body(new ApiResponse<String>(false, e.getMessage(), null));
 	}
 //
 //	// add exception handling method - to handle authentication failure
@@ -54,20 +54,28 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<?> handleInvalidInputException(InvalidInputException e) {
 		System.out.println("in catch -invalid input exc");
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)// SC 400
-				.body(new ApiResponse(e.getMessage()));
+				.body(new ApiResponse<String>(false, e.getMessage(), null));
+	}
+
+	// Handle IllegalArgumentException (including admin signup restriction)
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException e) {
+		System.out.println("in catch - IllegalArgumentException: " + e.getMessage());
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)// SC 400
+				.body(new ApiResponse<String>(false, e.getMessage(), null));
 	}
 
 	// add exception handling method - to catch remaining excs (catch-all)
 	@ExceptionHandler(RuntimeException.class)
-	public ResponseEntity<?> handleInvalidInputException(RuntimeException e) {
+	public ResponseEntity<?> handleRuntimeException(RuntimeException e) {
 		System.out.println("in catch all");
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)// SC 500
-				.body(new ApiResponse(e.getMessage()));
+				.body(new ApiResponse<String>(false, e.getMessage(), null));
 	}
 
 	// add exception handling method - to handle method arg not valid exc
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<?> handleInvalidInputException(MethodArgumentNotValidException e) {
+	public ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
 		System.out.println("in catch -MethodArgumentNotValidException");
 		// to send error JSON to the front
 		// 1. get list FieldError
@@ -78,8 +86,13 @@ public class GlobalExceptionHandler {
 //			errorMap.put(fieldErr.getField(), e.getMessage()));
 		Map<String, String> errorMap = e.getFieldErrors().stream()
 				.collect(Collectors.toMap(FieldError::getField, FieldError::getDefaultMessage));
+		
+		// Create a more user-friendly error message
+		String errorMessage = "Validation failed: " + errorMap.values().stream()
+				.findFirst().orElse("Invalid input data");
+		
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)// SC 400
-				.body(errorMap);
+				.body(new ApiResponse<Map<String, String>>(false, errorMessage, errorMap));
 	}
 
 	// add exception handling method - to handle ConstraintViolationExce
@@ -87,6 +100,6 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException e) {
 		System.out.println("in catch - ConstraintViolationException");
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)// SC 400
-				.body(new ApiResponse(e.getMessage()));
+				.body(new ApiResponse<String>(false, e.getMessage(), null));
 	}
 }

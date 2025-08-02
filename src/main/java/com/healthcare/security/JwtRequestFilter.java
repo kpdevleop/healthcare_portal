@@ -1,6 +1,8 @@
 package com.healthcare.security;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,10 +38,14 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
             try {
-                username = jwtUtil.extractUsername(jwt);
+                // Validate token format and extract username
+                if (jwt != null && !jwt.trim().isEmpty()) {
+                    username = jwtUtil.extractUsername(jwt);
+                }
             } catch (Exception e) {
-                // Handle JWT parsing exceptions (e.g., expired, invalid)
-                System.out.println("JWT Token has expired or is invalid");
+                // Log the exception for debugging
+                System.err.println("JWT Token validation failed: " + e.getMessage());
+                // Don't set username, let the request continue without authentication
             }
         }
 
@@ -48,8 +54,14 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
             if (jwtUtil.validateToken(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
+                // Extract role from JWT
+                String role = jwtUtil.extractClaim(jwt, claims -> claims.get("role", String.class));
+                List<org.springframework.security.core.GrantedAuthority> authorities = new ArrayList<>();
+                if (role != null) {
+                    authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(role));
+                }
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
                 usernamePasswordAuthenticationToken
                         .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
