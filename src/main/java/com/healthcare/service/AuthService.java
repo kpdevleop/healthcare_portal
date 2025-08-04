@@ -135,4 +135,24 @@ public class AuthService {
         
         return hasLower && hasUpper && hasDigit && hasSpecial;
     }
+
+    public AuthResponseDTO validateToken() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("Invalid or expired token");
+        }
+
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return new AuthResponseDTO(
+                null, // Don't return token again
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getFirstName(),
+                user.getLastName()
+        );
+    }
 }

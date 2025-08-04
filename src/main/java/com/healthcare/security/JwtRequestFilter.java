@@ -41,30 +41,37 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 // Validate token format and extract username
                 if (jwt != null && !jwt.trim().isEmpty()) {
                     username = jwtUtil.extractUsername(jwt);
+                    System.out.println("JWT Token processed successfully for user: " + username);
                 }
             } catch (Exception e) {
                 // Log the exception for debugging
                 System.err.println("JWT Token validation failed: " + e.getMessage());
                 // Don't set username, let the request continue without authentication
             }
+        } else {
+            System.out.println("No Authorization header found or invalid format");
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
-            if (jwtUtil.validateToken(jwt, userDetails)) {
-                // Extract role from JWT
-                String role = jwtUtil.extractClaim(jwt, claims -> claims.get("role", String.class));
-                List<org.springframework.security.core.GrantedAuthority> authorities = new ArrayList<>();
-                if (role != null) {
-                    authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(role));
+                if (jwtUtil.validateToken(jwt, userDetails)) {
+                    // Extract role from JWT
+                    String role = jwtUtil.extractClaim(jwt, claims -> claims.get("role", String.class));
+                    List<org.springframework.security.core.GrantedAuthority> authorities = new ArrayList<>();
+                    if (role != null) {
+                        authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(role));
+                    }
+                    UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
+                    usernamePasswordAuthenticationToken
+                            .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
                 }
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
-                usernamePasswordAuthenticationToken
-                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            } catch (Exception e) {
+                System.err.println("Error processing JWT token: " + e.getMessage());
+                // Continue without authentication
             }
         }
         chain.doFilter(request, response);

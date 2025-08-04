@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/api/departments")
 @CrossOrigin(origins = "*")
@@ -29,7 +31,8 @@ public class DepartmentController {
 
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_ADMIN')") // Only Admins can add departments
+    @PreAuthorize("hasRole('ADMIN')") // Only Admins can add departments
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<DepartmentDTO>> addDepartment(@Valid @RequestBody DepartmentRequestDTO departmentRequest) {
         try {
             // Check if department with same name already exists
@@ -55,6 +58,8 @@ public class DepartmentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')") // All authenticated users can view departments
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<List<DepartmentDTO>>> getAllDepartments() {
         try {
             List<Department> departments = departmentDao.findAllDepartments();
@@ -69,6 +74,8 @@ public class DepartmentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')") // All authenticated users can view specific departments
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<DepartmentDTO>> getDepartmentById(@PathVariable Long id) {
         try {
             Department department = departmentDao.findById(id)
@@ -87,7 +94,8 @@ public class DepartmentController {
 
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')") // Only Admins can update departments
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<DepartmentDTO>> updateDepartment(@PathVariable Long id, @Valid @RequestBody DepartmentRequestDTO departmentRequest) {
         try {
             Department department = departmentDao.findById(id)
@@ -116,7 +124,8 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')") // Only Admins can delete departments
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<String>> deleteDepartment(@PathVariable Long id) {
         try {
             Department department = departmentDao.findById(id)

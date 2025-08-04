@@ -1,16 +1,18 @@
+// File: com/healthcare/security/SecurityConfig.java
 package com.healthcare.security; // Make sure this package matches your actual project structure
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter; // If you have a custom filter
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 // New CORS-related imports
 import org.springframework.web.cors.CorsConfiguration;
@@ -20,7 +22,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays; // Needed for Arrays.asList()
 
 @Configuration
-@EnableWebSecurity // Enable Spring Security's web security support
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true) // Ensure method-level security is enabled
 public class SecurityConfig {
 
     private final JwtRequestFilter jwtRequestFilter;
@@ -35,13 +38,16 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable()) // Disable CSRF for stateless REST APIs
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // <--- THIS IS THE KEY LINE FOR CORS INTEGRATION
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions for JWT
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll() // Allow Swagger UI
-                .requestMatchers("/api/departments").permitAll() // Allow public access to get all departments
-                .requestMatchers("/api/departments/{id}").permitAll() // Allow public access to get department by id
+                .requestMatchers("/api/departments/**").authenticated() // Require authentication for all department endpoints
+                .requestMatchers("/api/doctor-schedules/**").authenticated() // Allows authenticated access to all doctor schedule endpoints
+                .requestMatchers("/api/appointments/**").authenticated() // Require authentication for all appointment endpoints
+                .requestMatchers("/api/medical-records/**").authenticated() // Require authentication for all medical record endpoints
+                .requestMatchers("/api/feedback/**").authenticated() // Require authentication for all feedback endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin-only endpoints
                 .requestMatchers("/api/doctor/**").hasAnyRole("ADMIN", "DOCTOR") // Doctor and admin endpoints
                 .requestMatchers("/api/patient/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT") // Patient endpoints

@@ -9,10 +9,10 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 import java.util.Collections;
 
-// @Configuration  // Commented out to avoid CORS conflicts
+@Configuration  // Uncommented to enable CORS
 public class CorsConfig {
 
-    // @Bean  // Commented out to avoid CORS conflicts
+    @Bean  // Uncommented to enable CORS
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();

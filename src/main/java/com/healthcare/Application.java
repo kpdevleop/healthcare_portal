@@ -42,43 +42,4 @@ public class Application {
 
 	}
 
-	@Bean
-	public CommandLineRunner initData(DepartmentRepository departmentRepository) {
-		return args -> {
-			// Initialize default departments if none exist
-			if (departmentRepository.count() == 0) {
-				Department cardiology = Department.builder()
-					.name("Cardiology")
-					.description("Heart and cardiovascular system treatment")
-					.build();
-				departmentRepository.save(cardiology);
-				
-				Department neurology = Department.builder()
-					.name("Neurology")
-					.description("Brain and nervous system treatment")
-					.build();
-				departmentRepository.save(neurology);
-				
-				Department orthopedics = Department.builder()
-					.name("Orthopedics")
-					.description("Bones, joints, and musculoskeletal system")
-					.build();
-				departmentRepository.save(orthopedics);
-				
-				Department pediatrics = Department.builder()
-					.name("Pediatrics")
-					.description("Medical care for infants, children, and adolescents")
-					.build();
-				departmentRepository.save(pediatrics);
-				
-				Department dermatology = Department.builder()
-					.name("Dermatology")
-					.description("Skin, hair, and nail conditions")
-					.build();
-				departmentRepository.save(dermatology);
-				
-				System.out.println("Default departments initialized successfully!");
-			}
-		};
-	}
 }

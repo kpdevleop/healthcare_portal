@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -48,5 +50,15 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/test-token")
+    public ResponseEntity<AuthResponseDTO> testToken() {
+        try {
+            // This endpoint validates the JWT token and returns user info
+            AuthResponseDTO response = authService.validateToken();
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Token validation failed: " + e.getMessage());
+        }
+    }
 
 }

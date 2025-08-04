@@ -16,11 +16,9 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 	@Query("SELECT d FROM Department d WHERE LOWER(d.name) = LOWER(:name) AND d.id != :id")
 	Optional<Department> findByNameIgnoreCaseAndIdNot(@Param("name") String name, @Param("id") Long id);
 	
-	// Query to fetch departments without loading users (for better performance)
 	@Query("SELECT d FROM Department d")
 	List<Department> findAllDepartments();
 	
-	// Query to check if department has any users
 	@Query("SELECT COUNT(u) > 0 FROM User u WHERE u.department.id = :departmentId")
 	boolean hasUsers(@Param("departmentId") Long departmentId);
 }
