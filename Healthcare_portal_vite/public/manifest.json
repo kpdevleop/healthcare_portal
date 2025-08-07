@@ -1,0 +1,16 @@
+{
+  "name": "Healthcare Portal",
+  "short_name": "Healthcare Portal",
+  "description": "A comprehensive healthcare management portal",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
