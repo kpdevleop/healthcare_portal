@@ -41,8 +41,10 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions for JWT
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
+                .requestMatchers("/api/auth/signin", "/api/auth/signup", "/api/auth/health").permitAll() // Allow unauthenticated access to signin/signup/health
+                .requestMatchers("/api/auth/test-token").authenticated() // Require authentication for token validation
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll() // Allow Swagger UI
+                .requestMatchers("/api/departments/public").permitAll() // <-- allow public access
                 .requestMatchers("/api/departments/**").authenticated() // Require authentication for all department endpoints
                 .requestMatchers("/api/doctor-schedules/**").authenticated() // Allows authenticated access to all doctor schedule endpoints
                 .requestMatchers("/api/appointments/**").authenticated() // Require authentication for all appointment endpoints

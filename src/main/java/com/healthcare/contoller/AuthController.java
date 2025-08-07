@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +26,11 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("Healthcare Portal Backend is running!");
+    }
+
     @PostMapping("/signup")
     public ResponseEntity<AuthResponseDTO> signUp(@Valid @RequestBody UserSignUpDTO signUpDto) {
         try {
@@ -37,6 +44,24 @@ public class AuthController {
             throw e; // Re-throw to be handled by GlobalExceptionHandler
         } catch (Exception e) {
             throw new IllegalArgumentException("Signup failed: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/admin/create-user")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<AuthResponseDTO> createUserByAdmin(@Valid @RequestBody UserSignUpDTO signUpDto) {
+        try {
+            if (signUpDto.getRole() == null) {
+                throw new IllegalArgumentException("User role is required.");
+            }
+            
+            AuthResponseDTO response = authService.createUserByAdmin(signUpDto);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            throw e; // Re-throw to be handled by GlobalExceptionHandler
+        } catch (Exception e) {
+            throw new IllegalArgumentException("User creation failed: " + e.getMessage());
         }
     }
 

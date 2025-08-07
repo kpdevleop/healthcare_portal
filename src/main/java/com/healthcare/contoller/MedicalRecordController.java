@@ -42,18 +42,18 @@ public class MedicalRecordController {
         return new ResponseEntity<>(createdMedicalRecord, HttpStatus.CREATED);
     }
     
-    // Update medical record (Admin only, or doctor can update their own)
+    // Update medical record (Doctors and Admins can update)
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('DOCTOR') and @medicalRecordService.isOwnMedicalRecord(#id))")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MedicalRecordResponseDTO> updateMedicalRecord(@PathVariable Long id, @Valid @RequestBody MedicalRecordRequestDTO dto) {
         MedicalRecordResponseDTO updatedMedicalRecord = medicalRecordService.updateMedicalRecord(id, dto);
         return ResponseEntity.ok(updatedMedicalRecord);
     }
     
-    // Get medical record by ID (Admin, Doctor, or Patient can view if it's their own)
+    // Get medical record by ID (Doctors and Admins can view)
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DOCTOR') or (hasRole('PATIENT') and @medicalRecordService.isOwnMedicalRecord(#id))")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MedicalRecordResponseDTO> getMedicalRecordById(@PathVariable Long id) {
         MedicalRecordResponseDTO medicalRecord = medicalRecordService.getMedicalRecordById(id);
@@ -69,18 +69,18 @@ public class MedicalRecordController {
         return ResponseEntity.ok(medicalRecords);
     }
     
-    // Get medical records by patient ID (Admin, Doctor, or Patient can view their own)
+    // Get medical records by patient ID (Doctors and Admins can view)
     @GetMapping("/patient/{patientId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DOCTOR') or (hasRole('PATIENT') and #patientId == authentication.principal.id)")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<MedicalRecordResponseDTO>> getMedicalRecordsByPatient(@PathVariable Long patientId) {
         List<MedicalRecordResponseDTO> medicalRecords = medicalRecordService.getMedicalRecordsByPatient(patientId);
         return ResponseEntity.ok(medicalRecords);
     }
     
-    // Get medical records by doctor ID (Admin or Doctor can view their own)
+    // Get medical records by doctor ID (Doctors and Admins can view)
     @GetMapping("/doctor/{doctorId}")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('DOCTOR') and #doctorId == authentication.principal.id)")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<MedicalRecordResponseDTO>> getMedicalRecordsByDoctor(@PathVariable Long doctorId) {
         List<MedicalRecordResponseDTO> medicalRecords = medicalRecordService.getMedicalRecordsByDoctor(doctorId);
@@ -97,9 +97,9 @@ public class MedicalRecordController {
         return ResponseEntity.ok(medicalRecords);
     }
     
-    // Get medical records by patient and doctor (Admin, Doctor, or Patient can view their own)
+    // Get medical records by patient and doctor (Doctors and Admins can view)
     @GetMapping("/patient/{patientId}/doctor/{doctorId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DOCTOR') or (hasRole('PATIENT') and #patientId == authentication.principal.id)")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<MedicalRecordResponseDTO>> getMedicalRecordsByPatientAndDoctor(
             @PathVariable Long patientId, @PathVariable Long doctorId) {
@@ -125,9 +125,9 @@ public class MedicalRecordController {
         return ResponseEntity.ok(medicalRecords);
     }
     
-    // Delete medical record (Admin only)
+    // Delete medical record (Doctors and Admins can delete)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> deleteMedicalRecord(@PathVariable Long id) {
         medicalRecordService.deleteMedicalRecord(id);

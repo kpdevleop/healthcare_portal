@@ -35,6 +35,6 @@ public class MedicalRecordRequestDTO {
     @Size(max = 2000, message = "Notes cannot exceed 2000 characters")
     private String notes;
     
-    @Size(max = 1000, message = "Attachments JSON cannot exceed 1000 characters")
-    private String attachments; // Optional JSON string of file paths/URLs
+    @Size(max = 10000000, message = "Attachments JSON cannot exceed 10MB")
+    private String attachments; // Optional JSON string of file data
 } 

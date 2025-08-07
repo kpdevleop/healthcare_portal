@@ -37,6 +37,9 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .patientId(appointment.getPatient().getId())
                 .patientName(appointment.getPatient().getFirstName() + " " + appointment.getPatient().getLastName())
                 .patientEmail(appointment.getPatient().getEmail())
+                .patientPhone(appointment.getPatient().getPhoneNumber())
+                .patientDateOfBirth(appointment.getPatient().getDateOfBirth() != null ? appointment.getPatient().getDateOfBirth().toString() : null)
+                .patientGender(appointment.getPatient().getGender())
                 .doctorId(appointment.getDoctor().getId())
                 .doctorName(appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName())
                 .doctorEmail(appointment.getDoctor().getEmail())
@@ -66,12 +69,24 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with ID: " + dto.getScheduleId()));
         
         if (!schedule.getIsAvailable()) {
-            throw new ScheduleAlreadyBookedException("This schedule is already booked");
+            throw new ScheduleAlreadyBookedException("This schedule is not available");
         }
         
-        // Check if schedule is already booked by another appointment
-        if (appointmentRepository.existsByScheduleId(dto.getScheduleId())) {
-            throw new ScheduleAlreadyBookedException("This schedule is already booked by another appointment");
+        // Check if this patient has already booked this schedule
+        if (appointmentRepository.existsByPatientIdAndScheduleId(dto.getPatientId(), dto.getScheduleId())) {
+            throw new ScheduleAlreadyBookedException("You have already booked an appointment for this schedule");
+        }
+        
+        // Check if the specific time slot is already booked for this schedule
+        List<Appointment> existingAppointments = appointmentRepository.findByScheduleId(dto.getScheduleId());
+        boolean timeSlotBooked = existingAppointments.stream()
+            .anyMatch(appointment -> 
+                appointment.getAppointmentTime().equals(dto.getAppointmentTime()) &&
+                !"CANCELLED".equalsIgnoreCase(appointment.getStatus())
+            );
+        
+        if (timeSlotBooked) {
+            throw new ScheduleAlreadyBookedException("This time slot is already booked");
         }
         
         // Create appointment
@@ -83,11 +98,11 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .appointmentTime(dto.getAppointmentTime())
                 .reason(dto.getReason())
                 .status(dto.getStatus())
+                .patientScheduleUnique(dto.getPatientId() + "_" + dto.getScheduleId()) // Unique constraint
                 .build();
         
-        // Mark schedule as unavailable
-        schedule.setIsAvailable(false);
-        doctorScheduleRepository.save(schedule);
+        // Don't mark the entire schedule as unavailable - we track booked times individually
+        // The schedule remains available as long as there are free time slots
         
         Appointment savedAppointment = appointmentRepository.save(appointment);
         return toDTO(savedAppointment);

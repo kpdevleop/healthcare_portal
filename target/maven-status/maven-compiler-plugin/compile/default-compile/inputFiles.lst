@@ -8,6 +8,7 @@ C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\contoller\DoctorScheduleController.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\contoller\FeedbackController.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\contoller\MedicalRecordController.java
+C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\contoller\UserController.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\custom_exceptions\ApiException.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\custom_exceptions\InvalidInputException.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\custom_exceptions\ResourceNotFoundException.java
@@ -25,6 +26,8 @@ C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\FeedbackResponseDTO.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\MedicalRecordRequestDTO.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\MedicalRecordResponseDTO.java
+C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\UserProfileUpdateDTO.java
+C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\UserResponseDTO.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\UserSignInDTO.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\dto\UserSignUpDTO.java
 C:\Users\a\Desktop\PGDAC_PROJECT\healthcare_portal\src\main\java\com\healthcare\entity\Appointment.java

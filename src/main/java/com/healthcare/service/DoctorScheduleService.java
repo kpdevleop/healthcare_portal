@@ -24,4 +24,6 @@ public interface DoctorScheduleService {
     DoctorScheduleResponseDTO bookSchedule(Long scheduleId);
     
     void deleteSchedule(Long id);
+    
+    void deleteMySchedule(Long id);
 }

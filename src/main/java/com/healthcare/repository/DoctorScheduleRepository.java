@@ -19,15 +19,15 @@ public interface DoctorScheduleRepository extends JpaRepository<DoctorSchedule, 
     
     List<DoctorSchedule> findByDoctorId(Long doctorId);
     
-    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor WHERE ds.id = :id")
+    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor d LEFT JOIN FETCH d.department WHERE ds.id = :id")
     Optional<DoctorSchedule> findByIdWithDoctor(@Param("id") Long id);
     
-    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor")
+    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor d LEFT JOIN FETCH d.department")
     List<DoctorSchedule> findAllWithDoctor();
     
-    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor WHERE ds.doctor.id = :doctorId")
+    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor d LEFT JOIN FETCH d.department WHERE ds.doctor.id = :doctorId")
     List<DoctorSchedule> findByDoctorIdWithDoctor(@Param("doctorId") Long doctorId);
     
-    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor WHERE ds.isAvailable = true AND ds.date = :date")
+    @Query("SELECT ds FROM DoctorSchedule ds JOIN FETCH ds.doctor d LEFT JOIN FETCH d.department WHERE ds.isAvailable = true AND ds.date = :date")
     List<DoctorSchedule> findAvailableSchedulesWithDoctor(@Param("date") LocalDate date);
 }

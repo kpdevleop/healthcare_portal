@@ -105,5 +105,13 @@ public class DoctorScheduleController {
         doctorScheduleService.deleteSchedule(id);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/my-schedules/{id}")
+    @PreAuthorize("hasRole('DOCTOR')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> deleteMySchedule(@PathVariable Long id) {
+        doctorScheduleService.deleteMySchedule(id);
+        return ResponseEntity.noContent().build();
+    }
 }
 

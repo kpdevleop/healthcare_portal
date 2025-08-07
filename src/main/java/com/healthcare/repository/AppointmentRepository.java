@@ -38,8 +38,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // Find appointments by doctor ID and status
     List<Appointment> findByDoctorIdAndStatus(Long doctorId, String status);
     
-    // Check if schedule is already booked
-    boolean existsByScheduleId(Long scheduleId);
+    // Find appointments by schedule ID
+    List<Appointment> findByScheduleId(Long scheduleId);
+    
+    // Check if patient has already booked this schedule
+    boolean existsByPatientIdAndScheduleId(Long patientId, Long scheduleId);
+    
+    // Find appointments by patient ID and schedule ID
+    List<Appointment> findByPatientIdAndScheduleId(Long patientId, Long scheduleId);
     
     // Find appointment with all related data
     @Query("SELECT a FROM Appointment a JOIN FETCH a.patient JOIN FETCH a.doctor JOIN FETCH a.schedule WHERE a.id = :id")

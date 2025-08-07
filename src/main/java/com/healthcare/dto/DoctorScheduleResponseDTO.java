@@ -14,8 +14,18 @@ public class DoctorScheduleResponseDTO {
     private Long id;
     private Long doctorId;
     private String doctorName; // Added for a more user-friendly response
+    private String doctorFirstName;
+    private String doctorLastName;
+    private String doctorEmail;
     private LocalDate date;
     private LocalTime startTime;
     private LocalTime endTime;
     private Boolean isAvailable;
+    
+    // Department information
+    private Long departmentId;
+    private String departmentName;
+    
+    // Add bookedTimes for frontend slot filtering
+    private java.util.List<String> bookedTimes;
 }

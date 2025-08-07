@@ -40,10 +40,14 @@ public class Appointment extends BaseEntity {
 	@NotNull(message = "Doctor must be specified for an appointment")
 	private User doctor;
 
-	@OneToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "schedule_id", nullable = false, unique = true) // Unique constraint for one-to-one
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "schedule_id", nullable = false) // Allow multiple appointments per schedule
 	@NotNull(message = "Schedule must be specified for an appointment")
 	private DoctorSchedule schedule;
+
+	// Add unique constraint to prevent one patient booking same schedule twice
+	@Column(name = "patient_schedule_unique", unique = true)
+	private String patientScheduleUnique; // Will be set as "patientId_scheduleId"
 
 	@Column(name = "appointment_date", nullable = false)
 	@NotNull(message = "Appointment date cannot be empty")

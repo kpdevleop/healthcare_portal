@@ -40,4 +40,7 @@ public interface MedicalRecordService {
     
     // Delete medical record
     void deleteMedicalRecord(Long id);
+    
+    // Check if medical record belongs to current user (for security annotations)
+    boolean isOwnMedicalRecord(Long medicalRecordId);
 } 

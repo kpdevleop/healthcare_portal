@@ -73,6 +73,20 @@ public class DepartmentController {
         }
     }
 
+    @GetMapping("/public")
+    public ResponseEntity<ApiResponse<List<DepartmentDTO>>> getPublicDepartments() {
+        try {
+            List<Department> departments = departmentDao.findAllDepartments();
+            List<DepartmentDTO> departmentDTOs = departments.stream()
+                .map(DepartmentDTO::fromEntity)
+                .collect(Collectors.toList());
+            return ResponseEntity.ok(new ApiResponse<>(true, "Departments retrieved successfully", departmentDTOs));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(false, "Error retrieving departments: " + e.getMessage(), null));
+        }
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')") // All authenticated users can view specific departments
     @SecurityRequirement(name = "bearerAuth")

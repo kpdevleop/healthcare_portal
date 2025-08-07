@@ -1,5 +1,6 @@
 com\healthcare\dto\AppointmentResponseDTO.class
 com\healthcare\entity\Feedback$FeedbackBuilder.class
+com\healthcare\dto\UserProfileUpdateDTO.class
 com\healthcare\dto\DoctorScheduleResponseDTO.class
 com\healthcare\dto\MedicalRecordResponseDTO.class
 com\healthcare\entity\Feedback.class
@@ -13,7 +14,9 @@ com\healthcare\entity\MedicalRecord.class
 com\healthcare\entity\Payment$PaymentBuilder.class
 com\healthcare\repository\DoctorScheduleRepository.class
 com\healthcare\config\SecurityHeadersConfig$1.class
+com\healthcare\contoller\UserController.class
 com\healthcare\dto\DepartmentDTO$DepartmentDTOBuilder.class
+com\healthcare\dto\UserResponseDTO.class
 com\healthcare\dto\DepartmentRequestDTO$DepartmentRequestDTOBuilder.class
 com\healthcare\custom_exceptions\TimeConflictException.class
 com\healthcare\entity\UserRole.class

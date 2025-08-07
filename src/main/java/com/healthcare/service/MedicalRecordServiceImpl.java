@@ -78,6 +78,17 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         MedicalRecord medicalRecord = medicalRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medical record not found with ID: " + id));
         
+        // Check if current user has permission to update this record
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Only allow admin or the doctor who created the record to update it
+        if (!currentUser.getRole().name().equals("ROLE_ADMIN") && 
+            !medicalRecord.getDoctor().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Access denied: You can only update your own medical records");
+        }
+        
         // Validate patient exists
         User patient = userRepository.findById(dto.getPatientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found with ID: " + dto.getPatientId()));
@@ -102,9 +113,21 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     @Override
     @Transactional
     public MedicalRecordResponseDTO getMedicalRecordById(Long id) {
-        return medicalRecordRepository.findByIdWithDetails(id)
-                .map(this::toDTO)
+        MedicalRecord medicalRecord = medicalRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medical record not found with ID: " + id));
+        
+        // Check if current user has permission to view this record
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Only allow admin or the doctor who created the record to view it
+        if (!currentUser.getRole().name().equals("ROLE_ADMIN") && 
+            !medicalRecord.getDoctor().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Access denied: You can only view your own medical records");
+        }
+        
+        return toDTO(medicalRecord);
     }
     
     @Override
@@ -201,6 +224,17 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     public void deleteMedicalRecord(Long id) {
         MedicalRecord medicalRecord = medicalRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Medical record not found with ID: " + id));
+        
+        // Check if current user has permission to delete this record
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Only allow admin or the doctor who created the record to delete it
+        if (!currentUser.getRole().name().equals("ROLE_ADMIN") && 
+            !medicalRecord.getDoctor().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Access denied: You can only delete your own medical records");
+        }
         
         medicalRecordRepository.delete(medicalRecord);
     }

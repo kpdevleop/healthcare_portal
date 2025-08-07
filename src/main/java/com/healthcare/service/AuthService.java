@@ -45,6 +45,11 @@ public class AuthService {
             throw new IllegalArgumentException("User with this email already exists.");
         }
 
+        // Restrict signup to only doctors and patients
+        if (signUpDto.getRole() == UserRole.ROLE_ADMIN) {
+            throw new IllegalArgumentException("Admin accounts cannot be created through public signup. Please contact system administrator.");
+        }
+
         // Validate password before encoding
         if (!isPasswordValid(signUpDto.getPassword())) {
             throw new IllegalArgumentException("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
@@ -86,6 +91,64 @@ public class AuthService {
         // Directly sign in the user after successful registration
         // IMPORTANT: UserSignInDto must have @AllArgsConstructor
         return signInUser(new UserSignInDTO(signUpDto.getEmail(), signUpDto.getPassword()));
+    }
+
+    public AuthResponseDTO createUserByAdmin(UserSignUpDTO signUpDto) {
+        if (userRepository.findByEmail(signUpDto.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("User with this email already exists.");
+        }
+
+        // Admin can create any type of user (including other admins)
+        if (signUpDto.getRole() == null) {
+            throw new IllegalArgumentException("User role is required.");
+        }
+
+        // Validate password before encoding
+        if (!isPasswordValid(signUpDto.getPassword())) {
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+        }
+
+        User newUser = User.builder()
+                .email(signUpDto.getEmail())
+                .password(passwordEncoder.encode(signUpDto.getPassword()))
+                .firstName(signUpDto.getFirstName())
+                .lastName(signUpDto.getLastName())
+                .phoneNumber(signUpDto.getPhoneNumber())
+                .role(signUpDto.getRole())
+                .profilePhotoUrl(null) // Optional, can be updated later
+                .build();
+
+        // Apply role-specific fields
+        if (signUpDto.getRole() == UserRole.ROLE_PATIENT) {
+            newUser.setDateOfBirth(signUpDto.getDateOfBirth());
+            newUser.setGender(signUpDto.getGender());
+            newUser.setAddress(signUpDto.getAddress());
+        } else if (signUpDto.getRole() == UserRole.ROLE_DOCTOR) {
+            // Validate department for doctors
+            if (signUpDto.getDepartmentId() == null) {
+                throw new IllegalArgumentException("Department is mandatory for doctor registration.");
+            }
+            
+            Department department = departmentRepository.findById(signUpDto.getDepartmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + signUpDto.getDepartmentId()));
+            newUser.setDepartment(department);
+            
+            newUser.setSpecialization(signUpDto.getSpecialization());
+            newUser.setLicenseNumber(signUpDto.getLicenseNumber());
+            newUser.setExperienceYears(signUpDto.getExperienceYears());
+        }
+
+        User savedUser = userRepository.save(newUser);
+
+        // Return user info without signing in (admin creates user, doesn't sign in as them)
+        return new AuthResponseDTO(
+                null, // No token since admin is not signing in as the new user
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getRole(),
+                savedUser.getFirstName(),
+                savedUser.getLastName()
+        );
     }
 
    public AuthResponseDTO signInUser(UserSignInDTO signInDto) {
