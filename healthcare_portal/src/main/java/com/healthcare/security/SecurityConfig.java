@@ -41,18 +41,27 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions for JWT
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/signin", "/api/auth/signup", "/api/auth/health").permitAll() // Allow unauthenticated access to signin/signup/health
-                .requestMatchers("/api/auth/test-token").authenticated() // Require authentication for token validation
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll() // Allow Swagger UI
-                .requestMatchers("/api/departments/public").permitAll() // <-- allow public access
+                .requestMatchers("/api/auth/health").permitAll()
+                .requestMatchers("/api/auth/test-otp").permitAll()
+                .requestMatchers("/api/auth/test-otp-generation").permitAll()
+                .requestMatchers("/api/auth/signin").permitAll()
+                .requestMatchers("/api/auth/signup").permitAll()
+                .requestMatchers("/api/auth/send-signup-otp").permitAll()
+                .requestMatchers("/api/auth/verify-signup-otp").permitAll()
+                .requestMatchers("/api/auth/forgot-password").permitAll()
+                .requestMatchers("/api/auth/reset-password").permitAll()
+                .requestMatchers("/api/departments/public").permitAll()
+                .requestMatchers("/api/users/doctors/public").authenticated() // Allow authenticated access to public doctors endpoint
+                .requestMatchers("/api/feedback/all/public").authenticated() // Allow authenticated access to public feedback endpoint
+                .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin-only endpoints
+                .requestMatchers("/api/doctor/**").hasAnyRole("ADMIN", "DOCTOR") // Doctor and admin endpoints
+                .requestMatchers("/api/patient/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT") // Patient endpoints
                 .requestMatchers("/api/departments/**").authenticated() // Require authentication for all department endpoints
+                .requestMatchers("/api/users/**").authenticated() // Require authentication for all user endpoints
                 .requestMatchers("/api/doctor-schedules/**").authenticated() // Allows authenticated access to all doctor schedule endpoints
                 .requestMatchers("/api/appointments/**").authenticated() // Require authentication for all appointment endpoints
                 .requestMatchers("/api/medical-records/**").authenticated() // Require authentication for all medical record endpoints
                 .requestMatchers("/api/feedback/**").authenticated() // Require authentication for all feedback endpoints
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // Admin-only endpoints
-                .requestMatchers("/api/doctor/**").hasAnyRole("ADMIN", "DOCTOR") // Doctor and admin endpoints
-                .requestMatchers("/api/patient/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT") // Patient endpoints
                 .anyRequest().authenticated() // All other requests require authentication
             )
             .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class) // Add JWT filter

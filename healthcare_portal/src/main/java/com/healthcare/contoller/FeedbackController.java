@@ -23,6 +23,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.healthcare.entity.Feedback;
+import com.healthcare.entity.User;
+import com.healthcare.entity.UserRole;
+import com.healthcare.repository.FeedbackRepository;
+import com.healthcare.repository.UserRepository;
+import com.healthcare.custom_exceptions.ResourceNotFoundException;
 
 @RestController
 @RequestMapping("/api/feedback")
@@ -30,6 +38,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 public class FeedbackController {
     
     private final FeedbackService feedbackService;
+    private final UserRepository userRepository;
+    private final FeedbackRepository feedbackRepository;
     
     // Create feedback (Patients can create their own feedback)
     @PostMapping
@@ -42,9 +52,26 @@ public class FeedbackController {
     
     // Update feedback (Patients can update their own feedback)
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('PATIENT') and @feedbackService.isOwnFeedback(#id)")
+    @PreAuthorize("hasRole('PATIENT')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<FeedbackResponseDTO> updateFeedback(@PathVariable Long id, @Valid @RequestBody FeedbackRequestDTO dto) {
+        // Additional security check in the method body
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+        
+        // Get current user
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Get feedback
+        Feedback feedback = feedbackRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found with ID: " + id));
+        
+        // Check if user can update this feedback
+        if (!feedback.getPatient().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Access denied: You can only update your own feedback");
+        }
+        
         FeedbackResponseDTO updatedFeedback = feedbackService.updateFeedback(id, dto);
         return ResponseEntity.ok(updatedFeedback);
     }
@@ -63,6 +90,15 @@ public class FeedbackController {
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<FeedbackResponseDTO>> getAllFeedback() {
+        List<FeedbackResponseDTO> feedback = feedbackService.getAllFeedback();
+        return ResponseEntity.ok(feedback);
+    }
+    
+    // Get all feedback for public view (for doctor reviews)
+    @GetMapping("/all/public")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<List<FeedbackResponseDTO>> getPublicFeedback() {
         List<FeedbackResponseDTO> feedback = feedbackService.getAllFeedback();
         return ResponseEntity.ok(feedback);
     }
@@ -142,9 +178,33 @@ public class FeedbackController {
     
     // Delete feedback (Admin only)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PATIENT')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> deleteFeedback(@PathVariable Long id) {
+        // Additional security check in the method body
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+        
+        // Get current user
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Get feedback
+        Feedback feedback = feedbackRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found with ID: " + id));
+        
+        // Check if user can delete this feedback
+        boolean canDelete = false;
+        if (currentUser.getRole() == UserRole.ROLE_ADMIN) {
+            canDelete = true;
+        } else if (currentUser.getRole() == UserRole.ROLE_PATIENT) {
+            canDelete = feedback.getPatient().getId().equals(currentUser.getId());
+        }
+        
+        if (!canDelete) {
+            throw new RuntimeException("Access denied: You can only delete your own feedback");
+        }
+        
         feedbackService.deleteFeedback(id);
         return ResponseEntity.noContent().build();
     }

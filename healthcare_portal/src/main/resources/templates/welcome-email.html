@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${appName} + ' - Welcome'">Healthcare Portal - Welcome</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .welcome-message {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .features {
+            margin: 30px 0;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f8fafc;
+            border-radius: 5px;
+        }
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background-color: #2563eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo" th:text="${appName}">Healthcare Portal</div>
+            <h2>Welcome to Our Healthcare Community!</h2>
+        </div>
+        
+        <div class="welcome-message">
+            <h3>Hello <span th:text="${firstName}">User</span>!</h3>
+            <p>Thank you for joining our healthcare portal. We're excited to have you as part of our community!</p>
+        </div>
+        
+        <div class="features">
+            <h3>What you can do with your account:</h3>
+            
+            <div class="feature">
+                <div class="feature-icon">📅</div>
+                <div>
+                    <strong>Book Appointments</strong><br>
+                    Schedule consultations with our experienced doctors
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📋</div>
+                <div>
+                    <strong>Manage Medical Records</strong><br>
+                    Access and update your health information securely
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">💬</div>
+                <div>
+                    <strong>Provide Feedback</strong><br>
+                    Share your experience and help us improve
+                </div>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <div>
+                    <strong>Secure Access</strong><br>
+                    Your data is protected with industry-standard security
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated message from <span th:text="${appName}">Healthcare Portal</span></p>
+            <p>If you have any questions, please contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -10,7 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // 30 second timeout for email operations
 });
 
 // Request interceptor to add auth token
@@ -175,6 +175,47 @@ export const authAPI = {
       return response;
     } catch (error) {
       throw error.response?.data || error.message;
+    }
+  },
+
+  // OTP and Password Reset Methods
+  sendSignupOtp: async (email) => {
+    try {
+      const response = await api.post('/auth/send-signup-otp', { email });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'auth/send-signup-otp');
+    }
+  },
+
+  verifySignupOtp: async (email, otp) => {
+    try {
+      const response = await api.post('/auth/verify-signup-otp', { email, otp });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'auth/verify-signup-otp');
+    }
+  },
+
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'auth/forgot-password');
+    }
+  },
+
+  resetPassword: async (email, otp, newPassword) => {
+    try {
+      const response = await api.post('/auth/reset-password', { 
+        email, 
+        otp, 
+        newPassword 
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, 'auth/reset-password');
     }
   },
 };

@@ -190,6 +190,16 @@ const SignInPage = () => {
               )}
             </div>
 
+            {/* Forgot Password Link */}
+            <div className="flex items-center justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"

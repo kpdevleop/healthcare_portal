@@ -9,6 +9,7 @@ import { USER_ROLES } from './services/api';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 
 // Dashboards
@@ -50,6 +51,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/signin" element={<SignInPage />} />
             <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
             {/* Protected Routes - Patient */}

@@ -33,6 +33,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public List<User> getUsersByRoleWithDepartment(UserRole role) {
+        return userRepository.findByRoleWithDepartment(role);
+    }
+
+    @Override
     public List<User> getDoctorsByDepartment(Long departmentId) {
         // This would need a join with department table
         // For now, return all doctors

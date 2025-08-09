@@ -95,3 +95,4 @@ application-*.yml
 # Temporary files
 *.tmp
 *.temp 
+/.metadata/

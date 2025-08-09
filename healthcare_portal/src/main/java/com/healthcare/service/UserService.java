@@ -11,6 +11,8 @@ public interface UserService {
     
     List<User> getUsersByRole(UserRole role);
     
+    List<User> getUsersByRoleWithDepartment(UserRole role);
+    
     List<User> getDoctorsByDepartment(Long departmentId);
     
     User getUserById(Long userId);

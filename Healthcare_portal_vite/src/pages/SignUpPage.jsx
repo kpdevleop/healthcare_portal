@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Heart, Lock, Mail, User, ArrowLeft, Shield, Stethoscope } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { departmentAPI } from '../services/api';
+import { departmentAPI, authAPI } from '../services/api';
 
 const roleOptions = [
   {
@@ -32,6 +32,9 @@ const SignUpPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState('ROLE_PATIENT');
   const [departments, setDepartments] = useState([]);
+  const [step, setStep] = useState(1); // 1: signup form, 2: OTP verification
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -189,35 +192,94 @@ const SignUpPage = () => {
     
     setLoading(true);
     
-    const userData = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phoneNumber: formData.phone,
-      password: formData.password,
-      role: formData.role,
-      // Include role-specific fields
-      ...(formData.role === 'ROLE_PATIENT' && {
-        dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
-        address: formData.address,
-      }),
-      ...(formData.role === 'ROLE_DOCTOR' && {
-        specialization: formData.specialization,
-        licenseNumber: formData.licenseNumber,
-        experienceYears: parseInt(formData.experienceYears),
-        departmentId: parseInt(formData.departmentId),
-      }),
-    };
+    try {
+      // First, send OTP for email verification
+      const response = await authAPI.sendSignupOtp(formData.email);
+      if (response.success) {
+        toast.success('Verification code sent to your email');
+        setStep(2);
+      } else {
+        toast.error(response.message || 'Failed to send verification code');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Failed to send verification code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
     
-    const result = await signup(userData);
-    if (result.success) {
-      toast.success('Account created successfully! Welcome aboard!');
-    } else {
-      toast.error(result.error || 'Failed to create account');
+    if (!otp.trim()) {
+      toast.error('Please enter the verification code');
+      return;
     }
     
-    setLoading(false);
+    if (otp.length !== 6) {
+      toast.error('Verification code must be 6 digits');
+      return;
+    }
+    
+    setOtpLoading(true);
+    
+    try {
+      // Verify OTP
+      const response = await authAPI.verifySignupOtp(formData.email, otp);
+      
+      if (response.success) {
+        // If OTP is verified, proceed with signup
+        const userData = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phoneNumber: formData.phone,
+          password: formData.password,
+          role: formData.role,
+          // Include role-specific fields
+          ...(formData.role === 'ROLE_PATIENT' && {
+            dateOfBirth: formData.dateOfBirth,
+            gender: formData.gender,
+            address: formData.address,
+          }),
+          ...(formData.role === 'ROLE_DOCTOR' && {
+            specialization: formData.specialization,
+            licenseNumber: formData.licenseNumber,
+            experienceYears: parseInt(formData.experienceYears),
+            departmentId: parseInt(formData.departmentId),
+          }),
+        };
+        
+        const result = await signup(userData);
+        if (result.success) {
+          toast.success('Account created successfully! Welcome aboard!');
+        } else {
+          toast.error(result.error || 'Failed to create account');
+        }
+      } else {
+        toast.error(response.message || 'Invalid verification code');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Invalid verification code');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtpLoading(true);
+    try {
+      const response = await authAPI.sendSignupOtp(formData.email);
+      if (response.success) {
+        toast.success('Verification code resent to your email');
+      } else {
+        toast.error(response.message || 'Failed to resend verification code');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Failed to resend verification code');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handleRoleSelect = (role) => {
@@ -277,222 +339,225 @@ const SignUpPage = () => {
 
         {/* Sign Up Form */}
         <div className="card">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-                <div className="text-sm text-red-700">
-                  {error}
-                </div>
-              </div>
-            )}
-
-            {/* Name Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+          {step === 1 ? (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+                  <div className="text-sm text-red-700">
+                    {error}
                   </div>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    autoComplete="given-name"
-                    className={`input-field pl-10 ${errors.firstName ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
-                  />
                 </div>
-                {errors.firstName && (
-                  <p className="text-red-600 text-sm mt-1">{errors.firstName}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    autoComplete="family-name"
-                    className={`input-field pl-10 ${errors.lastName ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                {errors.lastName && (
-                  <p className="text-red-600 text-sm mt-1">{errors.lastName}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  className={`input-field pl-10 ${errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-600 text-sm mt-1">{errors.email}</p>
               )}
-            </div>
 
-            {/* Phone Field */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  className={`input-field pl-10 ${errors.phone ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Enter your phone number"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              {errors.phone && (
-                <p className="text-red-600 text-sm mt-1">{errors.phone}</p>
-              )}
-            </div>
-
-            {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select Your Role
-              </label>
-              <div className="grid grid-cols-1 gap-3">
-                {roleOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleRoleSelect(option.value)}
-                    className={`p-4 border rounded-lg text-left transition-colors ${
-                      selectedRole === option.value
-                        ? `${option.borderColor} ${option.bgColor}`
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className={`${option.color}`}>
-                        {option.icon}
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{option.label}</h3>
-                        <p className="text-sm text-gray-600">{option.description}</p>
-                      </div>
+              {/* Name Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User className="h-5 w-5 text-gray-400" />
                     </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Patient-specific fields */}
-            {formData.role === 'ROLE_PATIENT' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
-                      Date of Birth
-                    </label>
                     <input
-                      id="dateOfBirth"
-                      name="dateOfBirth"
-                      type="date"
-                      className={`input-field ${errors.dateOfBirth ? 'border-red-500 focus:ring-red-500' : ''}`}
-                      value={formData.dateOfBirth}
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      autoComplete="given-name"
+                      className={`input-field pl-10 ${errors.firstName ? 'border-red-500 focus:ring-red-500' : ''}`}
+                      placeholder="First name"
+                      value={formData.firstName}
                       onChange={handleChange}
                       required
                     />
-                    {errors.dateOfBirth && (
-                      <p className="text-red-600 text-sm mt-1">{errors.dateOfBirth}</p>
-                    )}
                   </div>
-
-                  <div>
-                    <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
-                      Gender
-                    </label>
-                    <select
-                      id="gender"
-                      name="gender"
-                      className={`input-field ${errors.gender ? 'border-red-500 focus:ring-red-500' : ''}`}
-                      value={formData.gender}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Select gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {errors.gender && (
-                      <p className="text-red-600 text-sm mt-1">{errors.gender}</p>
-                    )}
-                  </div>
+                  {errors.firstName && (
+                    <p className="text-red-600 text-sm mt-1">{errors.firstName}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                    Address
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name
                   </label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    rows="3"
-                    className={`input-field ${errors.address ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="Enter your full address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    required
-                  />
-                  {errors.address && (
-                    <p className="text-red-600 text-sm mt-1">{errors.address}</p>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      autoComplete="family-name"
+                      className={`input-field pl-10 ${errors.lastName ? 'border-red-500 focus:ring-red-500' : ''}`}
+                      placeholder="Last name"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  {errors.lastName && (
+                    <p className="text-red-600 text-sm mt-1">{errors.lastName}</p>
                   )}
                 </div>
               </div>
-            )}
 
-            {/* Doctor-specific fields */}
-            {formData.role === 'ROLE_DOCTOR' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Email Field */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    className={`input-field pl-10 ${errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-red-600 text-sm mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Phone Field */}
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    className={`input-field pl-10 ${errors.phone ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    placeholder="Enter your phone number"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                {errors.phone && (
+                  <p className="text-red-600 text-sm mt-1">{errors.phone}</p>
+                )}
+              </div>
+
+              {/* Role Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-4">
+                  Select Your Role
+                </label>
+                <div className="grid grid-cols-1 gap-3">
+                  {roleOptions.map((role) => (
+                    <div
+                      key={role.value}
+                      onClick={() => handleRoleSelect(role.value)}
+                      className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:shadow-md ${
+                        selectedRole === role.value
+                          ? `${role.borderColor} ${role.bgColor}`
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`${role.color}`}>{role.icon}</div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-gray-900">{role.label}</h3>
+                          <p className="text-xs text-gray-500">{role.description}</p>
+                        </div>
+                        {selectedRole === role.value && (
+                          <div className="absolute top-2 right-2">
+                            <div className="w-4 h-4 bg-primary-600 rounded-full flex items-center justify-center">
+                              <div className="w-2 h-2 bg-white rounded-full"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Role-specific fields */}
+              {selectedRole === 'ROLE_PATIENT' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
+                        Date of Birth
+                      </label>
+                      <input
+                        id="dateOfBirth"
+                        name="dateOfBirth"
+                        type="date"
+                        className={`input-field ${errors.dateOfBirth ? 'border-red-500 focus:ring-red-500' : ''}`}
+                        value={formData.dateOfBirth}
+                        onChange={handleChange}
+                        required
+                      />
+                      {errors.dateOfBirth && (
+                        <p className="text-red-600 text-sm mt-1">{errors.dateOfBirth}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                        Gender
+                      </label>
+                      <select
+                        id="gender"
+                        name="gender"
+                        className={`input-field ${errors.gender ? 'border-red-500 focus:ring-red-500' : ''}`}
+                        value={formData.gender}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      {errors.gender && (
+                        <p className="text-red-600 text-sm mt-1">{errors.gender}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                      Address
+                    </label>
+                    <textarea
+                      id="address"
+                      name="address"
+                      rows="3"
+                      className={`input-field ${errors.address ? 'border-red-500 focus:ring-red-500' : ''}`}
+                      placeholder="Enter your address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                    />
+                    {errors.address && (
+                      <p className="text-red-600 text-sm mt-1">{errors.address}</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {selectedRole === 'ROLE_DOCTOR' && (
+                <>
                   <div>
                     <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 mb-2">
                       Specialization
@@ -521,7 +586,7 @@ const SignUpPage = () => {
                       name="licenseNumber"
                       type="text"
                       className={`input-field ${errors.licenseNumber ? 'border-red-500 focus:ring-red-500' : ''}`}
-                      placeholder="Medical license number"
+                      placeholder="Enter your medical license number"
                       value={formData.licenseNumber}
                       onChange={handleChange}
                       required
@@ -530,9 +595,7 @@ const SignUpPage = () => {
                       <p className="text-red-600 text-sm mt-1">{errors.licenseNumber}</p>
                     )}
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="experienceYears" className="block text-sm font-medium text-gray-700 mb-2">
                       Years of Experience
@@ -567,9 +630,9 @@ const SignUpPage = () => {
                       required
                     >
                       <option value="">Select department</option>
-                      {departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
                         </option>
                       ))}
                     </select>
@@ -577,121 +640,189 @@ const SignUpPage = () => {
                       <p className="text-red-600 text-sm mt-1">{errors.departmentId}</p>
                     )}
                   </div>
-                </div>
-              </div>
-            )}
+                </>
+              )}
 
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+              {/* Password Field */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className={`input-field pl-10 pr-10 ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    placeholder="Create a strong password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
                 </div>
+                {formData.password && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Password strength:</span>
+                      <span className="font-medium text-gray-700">{passwordStrength.text}</span>
+                    </div>
+                    <div className="mt-1 flex space-x-1">
+                      {[1, 2, 3, 4, 5].map((level) => (
+                        <div
+                          key={level}
+                          className={`h-1 flex-1 rounded-full transition-colors ${
+                            level <= passwordStrength.strength ? passwordStrength.color : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {errors.password && (
+                  <p className="text-red-600 text-sm mt-1">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Confirm Password Field */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className={`input-field pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+                {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                  <p className="text-green-600 text-sm mt-1">Passwords match</p>
+                )}
+                {errors.confirmPassword && (
+                  <p className="text-red-600 text-sm mt-1">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending verification code...
+                  </div>
+                ) : (
+                  'Continue to Verification'
+                )}
+              </button>
+            </form>
+          ) : (
+            /* OTP Verification Step */
+            <form className="space-y-6" onSubmit={handleOtpSubmit}>
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Shield className="h-12 w-12 text-primary-600" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Verify Your Email</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  We've sent a 6-digit verification code to <strong>{formData.email}</strong>
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                  Verification Code
+                </label>
                 <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  className={`input-field pl-10 pr-10 ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChange={handleChange}
+                  id="otp"
+                  name="otp"
+                  type="text"
+                  maxLength="6"
+                  className="input-field text-center text-2xl tracking-widest"
+                  placeholder="000000"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
                   required
                 />
+                <p className="text-sm text-gray-500 mt-2">
+                  Enter the 6-digit code sent to your email
+                </p>
+              </div>
+
+              <div className="flex space-x-3">
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setStep(1)}
+                  className="flex-1 btn-secondary"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={otpLoading}
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {otpLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Verifying...
+                    </div>
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
+                    'Verify & Create Account'
                   )}
                 </button>
               </div>
-              {formData.password && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Password strength:</span>
-                    <span className="font-medium text-gray-700">{passwordStrength.text}</span>
-                  </div>
-                  <div className="mt-1 flex space-x-1">
-                    {[1, 2, 3, 4, 5].map((level) => (
-                      <div
-                        key={level}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          level <= passwordStrength.strength ? passwordStrength.color : 'bg-gray-200'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {errors.password && (
-                <p className="text-red-600 text-sm mt-1">{errors.password}</p>
-              )}
-            </div>
 
-            {/* Confirm Password Field */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  className={`input-field pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                />
+              <div className="text-center">
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  onClick={handleResendOtp}
+                  disabled={otpLoading}
+                  className="text-sm text-primary-600 hover:text-primary-700 disabled:opacity-50"
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
+                  Didn't receive the code? Resend
                 </button>
               </div>
-              {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <p className="text-green-600 text-sm mt-1">Passwords match</p>
-              )}
-              {errors.confirmPassword && (
-                <p className="text-red-600 text-sm mt-1">{errors.confirmPassword}</p>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating account...
-                </div>
-              ) : (
-                'Create Account'
-              )}
-            </button>
-          </form>
+            </form>
+          )}
 
           {/* Sign In Link */}
           <div className="mt-6 text-center">

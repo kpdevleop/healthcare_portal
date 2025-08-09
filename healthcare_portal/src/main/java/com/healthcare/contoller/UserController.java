@@ -31,7 +31,7 @@ public class UserController {
     @Operation(summary = "Get all doctors", description = "Admin only endpoint to get all doctors")
     public ResponseEntity<ApiResponse<List<UserResponseDTO>>> getAllDoctors() {
         try {
-            List<User> doctors = userService.getUsersByRole(UserRole.ROLE_DOCTOR);
+            List<User> doctors = userService.getUsersByRoleWithDepartment(UserRole.ROLE_DOCTOR);
             List<UserResponseDTO> doctorDTOs = doctors.stream()
                 .map(user -> {
                     UserResponseDTO dto = new UserResponseDTO();
@@ -46,6 +46,39 @@ public class UserController {
                     dto.setExperienceYears(user.getExperienceYears());
                     if (user.getDepartment() != null) {
                         dto.setDepartmentId(user.getDepartment().getId());
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(new ApiResponse<>(true, "Doctors retrieved successfully", doctorDTOs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse<>(false, "Failed to retrieve doctors: " + e.getMessage(), null));
+        }
+    }
+    
+    @GetMapping("/doctors/public")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get all doctors for public view", description = "Public endpoint to get all doctors for patient reviews")
+    public ResponseEntity<ApiResponse<List<UserResponseDTO>>> getPublicDoctors() {
+        try {
+            List<User> doctors = userService.getUsersByRoleWithDepartment(UserRole.ROLE_DOCTOR);
+            List<UserResponseDTO> doctorDTOs = doctors.stream()
+                .map(user -> {
+                    UserResponseDTO dto = new UserResponseDTO();
+                    dto.setId(user.getId());
+                    dto.setFirstName(user.getFirstName());
+                    dto.setLastName(user.getLastName());
+                    dto.setEmail(user.getEmail());
+                    dto.setPhoneNumber(user.getPhoneNumber());
+                    dto.setRole(user.getRole());
+                    dto.setSpecialization(user.getSpecialization());
+                    dto.setLicenseNumber(user.getLicenseNumber());
+                    dto.setExperienceYears(user.getExperienceYears());
+                    if (user.getDepartment() != null) {
+                        dto.setDepartmentId(user.getDepartment().getId());
+                        dto.setDepartmentName(user.getDepartment().getName());
                     }
                     return dto;
                 })

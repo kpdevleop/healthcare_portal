@@ -201,14 +201,11 @@ public class AuthService {
 
     public AuthResponseDTO validateToken() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalArgumentException("Invalid or expired token");
-        }
-
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        User user = userRepository.findByEmail(userDetails.getUsername())
+        String email = authentication.getName();
+        
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
+        
         return new AuthResponseDTO(
                 null, // Don't return token again
                 user.getId(),
@@ -217,5 +214,19 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName()
         );
+    }
+    
+    public void resetPassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Validate new password
+        if (!isPasswordValid(newPassword)) {
+            throw new IllegalArgumentException("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+        }
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }
