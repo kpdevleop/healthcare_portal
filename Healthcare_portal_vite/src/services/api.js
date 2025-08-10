@@ -568,6 +568,15 @@ export const medicalRecordAPI = {
       return handleApiError(error, `medical-records/patient/${patientId}/doctor/${doctorId}`);
     }
   },
+
+  getAvailableAppointmentsForMedicalRecord: async (patientId) => {
+    try {
+      const response = await api.get(`/medical-records/available-appointments/${patientId}`);
+      return extractData(response);
+    } catch (error) {
+      return handleApiError(error, `medical-records/available-appointments/${patientId}`);
+    }
+  },
 };
 
 // Feedback API calls
@@ -791,3 +800,4 @@ export const userAPI = {
     }
   },
 };
+

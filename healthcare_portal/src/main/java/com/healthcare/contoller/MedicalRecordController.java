@@ -25,6 +25,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import com.healthcare.dto.AppointmentResponseDTO;
 
 @RestController
 @RequestMapping("/api/medical-records")
@@ -123,6 +124,15 @@ public class MedicalRecordController {
     public ResponseEntity<List<MedicalRecordResponseDTO>> getMyPatientMedicalRecords() {
         List<MedicalRecordResponseDTO> medicalRecords = medicalRecordService.getMyPatientMedicalRecords();
         return ResponseEntity.ok(medicalRecords);
+    }
+    
+    // Get available appointments for creating medical records (for doctors)
+    @GetMapping("/available-appointments/{patientId}")
+    @PreAuthorize("hasRole('DOCTOR')")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<List<AppointmentResponseDTO>> getAvailableAppointmentsForMedicalRecord(@PathVariable Long patientId) {
+        List<AppointmentResponseDTO> appointments = medicalRecordService.getAvailableAppointmentsForMedicalRecord(patientId);
+        return ResponseEntity.ok(appointments);
     }
     
     // Delete medical record (Doctors and Admins can delete)

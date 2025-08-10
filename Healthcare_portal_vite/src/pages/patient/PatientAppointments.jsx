@@ -14,6 +14,10 @@ const PatientAppointments = () => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
 
+  const [retryCount, setRetryCount] = useState({}); // Track retry attempts for each appointment
+  const [error, setError] = useState(null); // Track component-level errors
+  const [isRetrying, setIsRetrying] = useState(false); // Track retry state
+
   useEffect(() => {
     fetchAppointments();
   }, []);
@@ -21,17 +25,45 @@ const PatientAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const appointmentsData = await appointmentAPI.getMyAppointments();
+      
       setAppointments(appointmentsData || []);
       setFilteredAppointments(appointmentsData || []);
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      toast.error('Failed to load appointments');
+      
+      // Set error state for better error handling
+      setError(error);
+      
+      // Show user-friendly error message
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied. You do not have permission to view appointments.');
+      } else if (error.response?.status >= 500) {
+        toast.error('Server error. Please try again later.');
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('Request timeout. Please check your connection and try again.');
+      } else if (!error.response) {
+        toast.error('Network error. Please check your connection and try again.');
+      } else {
+        toast.error('Failed to load appointments. Please try again.');
+      }
+      
       setAppointments([]);
       setFilteredAppointments([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryFetch = async () => {
+    setIsRetrying(true);
+    setError(null);
+    await fetchAppointments();
+    setIsRetrying(false);
   };
 
   useEffect(() => {
@@ -122,6 +154,8 @@ const PatientAppointments = () => {
   const canCancelAppointment = (appointment) => {
     return appointment.status === 'PENDING' || appointment.status === 'CONFIRMED';
   };
+
+
 
   if (loading && appointments.length === 0) {
     return (
@@ -221,13 +255,13 @@ const PatientAppointments = () => {
 
         {/* Appointments List */}
         <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Appointments ({filteredAppointments.length})
-            </h3>
-          </div>
-          
           <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              My Appointments ({filteredAppointments.length})
+            </h3>
+            
+
+
             {filteredAppointments.length > 0 ? (
               <div className="space-y-4">
                 {filteredAppointments.map((appointment) => (
@@ -297,14 +331,20 @@ const PatientAppointments = () => {
 
                     <div className="flex justify-end space-x-2">
                       {appointment.status === 'COMPLETED' && (
-                        <button
-                          onClick={() => navigate(`/patient/medical-records`)}
-                          className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          View Medical Record
-                        </button>
+                        <>
+                          <button
+                            onClick={() => navigate(`/patient/medical-records`)}
+                            className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            View Medical Record
+                          </button>
+                          
+
+                        </>
                       )}
+                      
+
                     </div>
                   </div>
                 ))}
@@ -331,6 +371,8 @@ const PatientAppointments = () => {
           </div>
         </div>
       </div>
+
+
     </DashboardLayout>
   );
 };

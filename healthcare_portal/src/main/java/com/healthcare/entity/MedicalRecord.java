@@ -36,6 +36,11 @@ public class MedicalRecord extends BaseEntity {
     @NotNull(message = "Doctor must be specified for a medical record")
     private User doctor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "appointment_id", nullable = false)
+    @NotNull(message = "Appointment must be specified for a medical record")
+    private Appointment appointment;
+
     @Column(name = "record_date", nullable = false)
     @NotNull(message = "Record date cannot be empty")
     @PastOrPresent(message = "Record date must be in the past or present")

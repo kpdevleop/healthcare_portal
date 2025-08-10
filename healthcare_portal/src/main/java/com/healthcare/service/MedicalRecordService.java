@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.healthcare.dto.MedicalRecordRequestDTO;
 import com.healthcare.dto.MedicalRecordResponseDTO;
+import com.healthcare.dto.AppointmentResponseDTO;
 
 public interface MedicalRecordService {
     
@@ -37,6 +38,9 @@ public interface MedicalRecordService {
     
     // Get my patient medical records (for doctors)
     List<MedicalRecordResponseDTO> getMyPatientMedicalRecords();
+    
+    // Get available appointments for creating medical records
+    List<AppointmentResponseDTO> getAvailableAppointmentsForMedicalRecord(Long patientId);
     
     // Delete medical record
     void deleteMedicalRecord(Long id);

@@ -47,6 +47,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // Find appointments by patient ID and schedule ID
     List<Appointment> findByPatientIdAndScheduleId(Long patientId, Long scheduleId);
     
+    // Find available appointments for a patient with a specific doctor that don't have medical records
+    @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.doctor.id = :doctorId AND a.status IN ('PENDING', 'CONFIRMED') AND NOT EXISTS (SELECT mr FROM MedicalRecord mr WHERE mr.appointment.id = a.id)")
+    List<Appointment> findByPatientIdAndDoctorIdAndNoMedicalRecord(@Param("patientId") Long patientId, @Param("doctorId") Long doctorId);
+    
+    // Legacy method for backward compatibility
+    @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.doctor.id = :doctorId AND a.status = :status AND NOT EXISTS (SELECT mr FROM MedicalRecord mr WHERE mr.appointment.id = a.id)")
+    List<Appointment> findByPatientIdAndDoctorIdAndStatusAndNoMedicalRecord(@Param("patientId") Long patientId, @Param("doctorId") Long doctorId, @Param("status") String status);
+    
     // Find appointment with all related data
     @Query("SELECT a FROM Appointment a JOIN FETCH a.patient JOIN FETCH a.doctor JOIN FETCH a.schedule WHERE a.id = :id")
     Optional<Appointment> findByIdWithDetails(@Param("id") Long id);

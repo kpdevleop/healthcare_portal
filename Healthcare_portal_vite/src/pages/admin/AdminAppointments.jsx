@@ -514,6 +514,17 @@ const AdminAppointments = () => {
               All Appointments ({filteredAppointments.length})
             </h3>
             
+            {/* Workflow Information */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">Appointment Workflow</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                <p><strong>PENDING:</strong> Initial appointment status - patient has booked but not yet confirmed</p>
+                <p><strong>CONFIRMED:</strong> Doctor/admin has confirmed the appointment</p>
+                <p><strong>COMPLETED:</strong> Appointment has been completed</p>
+                <p><strong>CANCELLED:</strong> Appointment has been cancelled</p>
+              </div>
+            </div>
+            
             {loading ? (
               <div className="flex justify-center items-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -601,6 +612,51 @@ const AdminAppointments = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
+                            {/* Status Update Buttons */}
+                            {appointment.status === 'PENDING' && (
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.id, 'CONFIRMED')}
+                                className="text-green-600 hover:text-green-900"
+                                title="Confirm appointment"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                            
+                            {appointment.status === 'CONFIRMED' && (
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.id, 'COMPLETED')}
+                                className="text-blue-600 hover:text-blue-900"
+                                title="Mark as completed"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                            
+                            {(appointment.status === 'PENDING' || appointment.status === 'CONFIRMED') && (
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.id, 'CANCELLED')}
+                                className="text-red-600 hover:text-red-900"
+                                title="Cancel appointment"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                            
+                            {/* Status Dropdown */}
+                            <select
+                              value={appointment.status}
+                              onChange={(e) => handleStatusUpdate(appointment.id, e.target.value)}
+                              className="text-xs border border-gray-300 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              title="Change status"
+                            >
+                              <option value="PENDING">PENDING</option>
+                              <option value="CONFIRMED">CONFIRMED</option>
+                              <option value="COMPLETED">COMPLETED</option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </select>
+                            
+                            {/* Edit and Delete buttons */}
                             <button
                               onClick={() => handleEdit(appointment)}
                               className="text-blue-600 hover:text-blue-900"

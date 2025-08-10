@@ -22,6 +22,9 @@ public class MedicalRecordRequestDTO {
     @NotNull(message = "Doctor ID is required")
     private Long doctorId;
     
+    @NotNull(message = "Appointment ID is required")
+    private Long appointmentId;
+    
     @NotNull(message = "Record date is required")
     @PastOrPresent(message = "Record date must be in the past or present")
     private LocalDate recordDate;

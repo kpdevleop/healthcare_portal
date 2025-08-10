@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/DashboardLayout';
 import { medicalRecordAPI, appointmentAPI } from '../../services/api';
-import { FileText, Search, Filter, Plus, Edit, Eye, User, Calendar, Stethoscope, X } from 'lucide-react';
+import { FileText, Search, Filter, Plus, Edit, Eye, User, Calendar, Stethoscope, X, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DoctorMedicalRecords = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
@@ -18,8 +19,11 @@ const DoctorMedicalRecords = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [patients, setPatients] = useState([]);
+  const [availableAppointments, setAvailableAppointments] = useState([]);
+  const [patientMedicalHistory, setPatientMedicalHistory] = useState([]);
   const [formData, setFormData] = useState({
     patientId: '',
+    appointmentId: '',
     recordDate: '',
     diagnosis: '',
     prescription: '',
@@ -29,7 +33,40 @@ const DoctorMedicalRecords = () => {
   useEffect(() => {
     fetchMedicalRecords();
     fetchPatients();
-  }, []);
+    
+    // Check URL parameters for pre-selection
+    const urlParams = new URLSearchParams(location.search);
+    const patientId = urlParams.get('patientId');
+    const shouldCreate = urlParams.get('create');
+    
+    if (patientId && shouldCreate === 'true') {
+      setFormData(prev => ({ ...prev, patientId }));
+      setShowForm(true);
+      // Clear the URL parameters
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate]);
+
+  // Fetch available appointments when patient changes
+  useEffect(() => {
+    if (formData.patientId) {
+      fetchAvailableAppointments(formData.patientId);
+      fetchPatientMedicalHistory(formData.patientId);
+    } else {
+      setAvailableAppointments([]);
+      setPatientMedicalHistory([]);
+    }
+  }, [formData.patientId]);
+
+  // Auto-set record date when appointment is selected
+  useEffect(() => {
+    if (formData.appointmentId && availableAppointments.length > 0) {
+      const selectedAppointment = availableAppointments.find(apt => apt.id.toString() === formData.appointmentId);
+      if (selectedAppointment && selectedAppointment.appointmentDate) {
+        setFormData(prev => ({ ...prev, recordDate: selectedAppointment.appointmentDate }));
+      }
+    }
+  }, [formData.appointmentId, availableAppointments]);
 
   const fetchMedicalRecords = async () => {
     try {
@@ -89,6 +126,28 @@ const DoctorMedicalRecords = () => {
     }
   };
 
+  const fetchAvailableAppointments = async (patientId) => {
+    try {
+      console.log('Fetching appointments for patient:', patientId);
+      const appointments = await medicalRecordAPI.getAvailableAppointmentsForMedicalRecord(patientId);
+      console.log('Received appointments:', appointments);
+      setAvailableAppointments(Array.isArray(appointments) ? appointments : []);
+    } catch (error) {
+      console.error('Error fetching available appointments:', error);
+      setAvailableAppointments([]);
+    }
+  };
+
+  const fetchPatientMedicalHistory = async (patientId) => {
+    try {
+      const history = await medicalRecordAPI.getMedicalRecordsByPatient(patientId);
+      setPatientMedicalHistory(Array.isArray(history) ? history : []);
+    } catch (error) {
+      console.error('Error fetching patient medical history:', error);
+      setPatientMedicalHistory([]);
+    }
+  };
+
   useEffect(() => {
     filterRecords();
   }, [searchTerm, selectedPatient, selectedDate, medicalRecords]);
@@ -127,6 +186,11 @@ const DoctorMedicalRecords = () => {
       return false;
     }
     
+    if (!formData.appointmentId) {
+      toast.error('Please select an appointment');
+      return false;
+    }
+    
     if (!formData.recordDate) {
       toast.error('Please select a record date');
       return false;
@@ -153,12 +217,15 @@ const DoctorMedicalRecords = () => {
   const resetForm = () => {
     setFormData({
       patientId: '',
+      appointmentId: '',
       recordDate: '',
       diagnosis: '',
       prescription: '',
       notes: ''
     });
     setEditingRecord(null);
+    setAvailableAppointments([]);
+    setPatientMedicalHistory([]);
   };
 
   const handleCreateRecord = async (e) => {
@@ -180,6 +247,7 @@ const DoctorMedicalRecords = () => {
       const recordData = {
         patientId: parseInt(formData.patientId),
         doctorId: parseInt(user.id),
+        appointmentId: parseInt(formData.appointmentId),
         recordDate: formData.recordDate,
         diagnosis: formData.diagnosis || '',
         prescription: formData.prescription || '',
@@ -223,6 +291,7 @@ const DoctorMedicalRecords = () => {
       const recordData = {
         patientId: parseInt(formData.patientId),
         doctorId: parseInt(user.id),
+        appointmentId: parseInt(formData.appointmentId),
         recordDate: formData.recordDate,
         diagnosis: formData.diagnosis || '',
         prescription: formData.prescription || '',
@@ -280,12 +349,17 @@ const DoctorMedicalRecords = () => {
     setEditingRecord(record);
     setFormData({
       patientId: record.patientId.toString(),
+      appointmentId: record.appointmentId?.toString() || '',
       recordDate: record.recordDate || record.createdAt?.split('T')[0] || '',
       diagnosis: record.diagnosis || '',
       prescription: record.prescription || '',
       notes: record.notes || ''
     });
     setShowForm(true);
+  };
+
+  const viewRecordDetails = (record) => {
+    navigate(`/doctor/medical-record-details/${record.id}`, { state: { record } });
   };
 
   const formatDate = (dateString) => {
@@ -298,6 +372,19 @@ const DoctorMedicalRecords = () => {
       });
     } catch (error) {
       return 'Invalid Date';
+    }
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    try {
+      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return timeString;
     }
   };
 
@@ -416,6 +503,9 @@ const DoctorMedicalRecords = () => {
                       Patient
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Appointment
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Record Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -441,6 +531,14 @@ const DoctorMedicalRecords = () => {
                         </div>
                         <div className="text-sm text-gray-500">
                           {record.patientEmail || record.patient?.email || 'No email'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(record.appointmentDate)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {formatTime(record.appointmentTime)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -474,6 +572,13 @@ const DoctorMedicalRecords = () => {
                             title="Delete Record"
                           >
                             <X className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => viewRecordDetails(record)}
+                            className="text-green-600 hover:text-green-900"
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -533,7 +638,9 @@ const DoctorMedicalRecords = () => {
                     </label>
                     <select
                       value={formData.patientId}
-                      onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, patientId: e.target.value, appointmentId: '' });
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                       disabled={editingRecord} // Disable patient selection when editing
@@ -549,17 +656,61 @@ const DoctorMedicalRecords = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Record Date *
+                      Appointment *
                     </label>
-                    <input
-                      type="date"
-                      value={formData.recordDate}
-                      onChange={(e) => setFormData({ ...formData, recordDate: e.target.value })}
+                    <select
+                      value={formData.appointmentId}
+                      onChange={(e) => setFormData({ ...formData, appointmentId: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
-                      max={new Date().toISOString().split('T')[0]}
-                    />
+                      disabled={!formData.patientId || editingRecord}
+                    >
+                      <option value="">Select Appointment</option>
+                      {availableAppointments.map((appointment) => (
+                        <option key={appointment.id} value={appointment.id}>
+                          {formatDate(appointment.appointmentDate)} at {formatTime(appointment.appointmentTime)}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.patientId && availableAppointments.length === 0 && (
+                      <p className="text-sm text-red-600 mt-1">
+                        No available appointments found for this patient
+                      </p>
+                    )}
+                    {formData.appointmentId && availableAppointments.length > 0 && (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="text-sm text-blue-900">
+                          <strong>Selected Appointment:</strong>
+                        </div>
+                        <div className="text-sm text-blue-700 mt-1">
+                          {(() => {
+                            const selected = availableAppointments.find(apt => apt.id.toString() === formData.appointmentId);
+                            return selected ? (
+                              <>
+                                <div>Date: {formatDate(selected.appointmentDate)}</div>
+                                <div>Time: {formatTime(selected.appointmentTime)}</div>
+                                <div>Status: {selected.status}</div>
+                              </>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Record Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.recordDate}
+                    onChange={(e) => setFormData({ ...formData, recordDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                    max={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
 
                 <div className="mb-4">
@@ -602,6 +753,48 @@ const DoctorMedicalRecords = () => {
                     placeholder="Enter additional notes..."
                     maxLength={2000}
                   />
+                </div>
+
+                {/* Patient Information Section */}
+                {formData.patientId && patients.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Patient Information
+                    </h3>
+                    <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
+                      {(() => {
+                        const selectedPatient = patients.find(p => p.id.toString() === formData.patientId);
+                        return selectedPatient ? (
+                          <div className="text-sm text-blue-900">
+                            <div><strong>Name:</strong> {selectedPatient.name}</div>
+                            <div><strong>ID:</strong> {selectedPatient.id}</div>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Patient Medical History Section */}
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Patient Medical History
+                  </h3>
+                  <div className="bg-gray-100 p-4 rounded-md">
+                    {patientMedicalHistory.length > 0 ? (
+                      <ul className="list-disc list-inside text-sm text-gray-800">
+                        {patientMedicalHistory.map((record) => (
+                          <li key={record.id}>
+                            {formatDate(record.recordDate || record.createdAt)}: {record.diagnosis || 'No diagnosis'}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        No previous medical history available for this patient.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-3">

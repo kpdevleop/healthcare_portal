@@ -29,9 +29,9 @@ public class BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	@CreationTimestamp
-	@Column(name="creation_date")
+	@Column(name="creation_date", columnDefinition = "DATE")
 	private LocalDate creationDate;
 	@UpdateTimestamp
-	@Column(name="updated_on")
+	@Column(name="updated_on", columnDefinition = "DATETIME")
 	private LocalDateTime updatedOn;
 }

@@ -1,6 +1,8 @@
 package com.healthcare.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -10,12 +12,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.healthcare.custom_exceptions.ResourceNotFoundException;
+import com.healthcare.custom_exceptions.InvalidInputException;
 import com.healthcare.dto.MedicalRecordRequestDTO;
 import com.healthcare.dto.MedicalRecordResponseDTO;
 import com.healthcare.entity.MedicalRecord;
+import com.healthcare.entity.Appointment;
 import com.healthcare.entity.User;
 import com.healthcare.repository.MedicalRecordRepository;
+import com.healthcare.repository.AppointmentRepository;
 import com.healthcare.repository.UserRepository;
+import com.healthcare.dto.AppointmentResponseDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +31,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     
     private final MedicalRecordRepository medicalRecordRepository;
     private final UserRepository userRepository;
+    private final AppointmentRepository appointmentRepository;
     
     // Convert entity to DTO
     private MedicalRecordResponseDTO toDTO(MedicalRecord medicalRecord) {
@@ -36,6 +43,10 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .doctorId(medicalRecord.getDoctor().getId())
                 .doctorName(medicalRecord.getDoctor().getFirstName() + " " + medicalRecord.getDoctor().getLastName())
                 .doctorEmail(medicalRecord.getDoctor().getEmail())
+                .appointmentId(medicalRecord.getAppointment().getId())
+                .appointmentDate(medicalRecord.getAppointment().getAppointmentDate())
+                .appointmentTime(medicalRecord.getAppointment().getAppointmentTime())
+                .appointmentStatus(medicalRecord.getAppointment().getStatus())
                 .recordDate(medicalRecord.getRecordDate())
                 .diagnosis(medicalRecord.getDiagnosis())
                 .prescription(medicalRecord.getPrescription())
@@ -57,10 +68,44 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         User doctor = userRepository.findById(dto.getDoctorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found with ID: " + dto.getDoctorId()));
         
+        // Validate appointment exists and belongs to the doctor and patient
+        Appointment appointment = appointmentRepository.findById(dto.getAppointmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with ID: " + dto.getAppointmentId()));
+        
+        // Check if appointment belongs to the specified doctor and patient
+        if (!appointment.getDoctor().getId().equals(dto.getDoctorId()) || 
+            !appointment.getPatient().getId().equals(dto.getPatientId())) {
+            throw new InvalidInputException("Appointment does not match the specified doctor and patient");
+        }
+        
+        // Check if appointment is in CONFIRMED status
+        if (!"CONFIRMED".equals(appointment.getStatus())) {
+            throw new InvalidInputException("Medical record can only be created for CONFIRMED appointments");
+        }
+        
+        // Validate record date matches appointment date
+        if (!dto.getRecordDate().equals(appointment.getAppointmentDate())) {
+            throw new InvalidInputException("Record date must match the appointment date");
+        }
+        
+        // Check if current time is after appointment time (for same day appointments)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime appointmentDateTime = LocalDateTime.of(appointment.getAppointmentDate(), appointment.getAppointmentTime());
+        
+        if (dto.getRecordDate().equals(LocalDate.now()) && now.isBefore(appointmentDateTime)) {
+            throw new InvalidInputException("Medical record cannot be created before the appointment time");
+        }
+        
+        // Check if medical record already exists for this appointment
+        if (medicalRecordRepository.existsByAppointmentId(dto.getAppointmentId())) {
+            throw new InvalidInputException("Medical record already exists for this appointment");
+        }
+        
         // Create medical record
         MedicalRecord medicalRecord = MedicalRecord.builder()
                 .patient(patient)
                 .doctor(doctor)
+                .appointment(appointment)
                 .recordDate(dto.getRecordDate())
                 .diagnosis(dto.getDiagnosis())
                 .prescription(dto.getPrescription())
@@ -69,6 +114,11 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .build();
         
         MedicalRecord savedMedicalRecord = medicalRecordRepository.save(medicalRecord);
+        
+        // Automatically complete the appointment
+        appointment.setStatus("COMPLETED");
+        appointmentRepository.save(appointment);
+        
         return toDTO(savedMedicalRecord);
     }
     
@@ -97,9 +147,25 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         User doctor = userRepository.findById(dto.getDoctorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found with ID: " + dto.getDoctorId()));
         
+        // Validate appointment exists and belongs to the doctor and patient
+        Appointment appointment = appointmentRepository.findById(dto.getAppointmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with ID: " + dto.getAppointmentId()));
+        
+        // Check if appointment belongs to the specified doctor and patient
+        if (!appointment.getDoctor().getId().equals(dto.getDoctorId()) || 
+            !appointment.getPatient().getId().equals(dto.getPatientId())) {
+            throw new InvalidInputException("Appointment does not match the specified doctor and patient");
+        }
+        
+        // Validate record date matches appointment date
+        if (!dto.getRecordDate().equals(appointment.getAppointmentDate())) {
+            throw new InvalidInputException("Record date must match the appointment date");
+        }
+        
         // Update medical record
         medicalRecord.setPatient(patient);
         medicalRecord.setDoctor(doctor);
+        medicalRecord.setAppointment(appointment);
         medicalRecord.setRecordDate(dto.getRecordDate());
         medicalRecord.setDiagnosis(dto.getDiagnosis());
         medicalRecord.setPrescription(dto.getPrescription());
@@ -237,6 +303,52 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         }
         
         medicalRecordRepository.delete(medicalRecord);
+    }
+    
+    @Override
+    @Transactional
+    public List<AppointmentResponseDTO> getAvailableAppointmentsForMedicalRecord(Long patientId) {
+        // Get current doctor from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentDoctor = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        if (!currentDoctor.getRole().name().equals("ROLE_DOCTOR")) {
+            throw new RuntimeException("Only doctors can access appointment information for medical records");
+        }
+        
+        System.out.println("DEBUG: Looking for appointments for patientId=" + patientId + ", doctorId=" + currentDoctor.getId());
+        
+        // Get available appointments (PENDING or CONFIRMED) for the patient with this doctor that don't have medical records yet
+        List<Appointment> availableAppointments = appointmentRepository.findByPatientIdAndDoctorIdAndNoMedicalRecord(
+                patientId, currentDoctor.getId());
+        
+        System.out.println("DEBUG: Found " + availableAppointments.size() + " available appointments");
+        availableAppointments.forEach(apt -> {
+            System.out.println("DEBUG: Appointment ID=" + apt.getId() + ", Status=" + apt.getStatus() + ", Date=" + apt.getAppointmentDate());
+        });
+        
+        return availableAppointments.stream()
+                .map(appointment -> AppointmentResponseDTO.builder()
+                        .id(appointment.getId())
+                        .patientId(appointment.getPatient().getId())
+                        .patientName(appointment.getPatient().getFirstName() + " " + appointment.getPatient().getLastName())
+                        .patientEmail(appointment.getPatient().getEmail())
+                        .patientPhone(appointment.getPatient().getPhoneNumber())
+                        .patientDateOfBirth(appointment.getPatient().getDateOfBirth() != null ? appointment.getPatient().getDateOfBirth().toString() : null)
+                        .patientGender(appointment.getPatient().getGender())
+                        .doctorId(appointment.getDoctor().getId())
+                        .doctorName(appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName())
+                        .doctorEmail(appointment.getDoctor().getEmail())
+                        .scheduleId(appointment.getSchedule().getId())
+                        .appointmentDate(appointment.getAppointmentDate())
+                        .appointmentTime(appointment.getSchedule().getStartTime())
+                        .reason(appointment.getReason())
+                        .status(appointment.getStatus())
+                        .departmentName(appointment.getDoctor().getDepartment() != null ? appointment.getDoctor().getDepartment().getName() : null)
+                        .doctorSpecialization(appointment.getDoctor().getSpecialization())
+                        .build())
+                .collect(Collectors.toList());
     }
     
     // Method to check if medical record belongs to current user (for security annotations)

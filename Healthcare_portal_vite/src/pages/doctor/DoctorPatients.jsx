@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/DashboardLayout';
 import { appointmentAPI, medicalRecordAPI } from '../../services/api';
-import { User, Search, Filter, Calendar, Phone, Mail, Eye, MessageSquare, Stethoscope } from 'lucide-react';
+import { User, Search, Filter, Calendar, Phone, Mail, Eye, MessageSquare, Stethoscope, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DoctorPatients = () => {
@@ -172,6 +172,11 @@ const DoctorPatients = () => {
     navigate(`/doctor/appointments?patientId=${patientId}`);
   };
 
+  const handleCreateMedicalRecord = (patientId) => {
+    // Navigate to medical records page with patient ID to create a new record
+    navigate(`/doctor/medical-records?patientId=${patientId}&create=true`);
+  };
+
   if (loading && patients.length === 0) {
     return (
       <DashboardLayout title="My Patients">
@@ -245,6 +250,45 @@ const DoctorPatients = () => {
                 Clear Filters
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => navigate('/doctor/medical-records')}
+              className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <Stethoscope className="h-6 w-6 text-blue-600 mr-3" />
+              <div className="text-left">
+                <div className="font-medium text-blue-900">Medical Records</div>
+                <div className="text-sm text-blue-600">Manage patient records</div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => navigate('/doctor/schedules')}
+              className="flex items-center justify-center p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+            >
+              <Calendar className="h-6 w-6 text-green-600 mr-3" />
+              <div className="text-left">
+                <div className="font-medium text-green-900">My Schedule</div>
+                <div className="text-sm text-green-600">View and manage availability</div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => navigate('/doctor/appointments')}
+              className="flex items-center justify-center p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+            >
+              <Clock className="h-6 w-6 text-purple-600 mr-3" />
+              <div className="text-left">
+                <div className="font-medium text-purple-900">Appointments</div>
+                <div className="text-sm text-purple-600">View all appointments</div>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -322,6 +366,13 @@ const DoctorPatients = () => {
                             >
                               <Eye className="h-4 w-4" />
                             </button>
+                            <button
+                              onClick={() => handleCreateMedicalRecord(patient.id)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Create Medical Record"
+                            >
+                              <Stethoscope className="h-4 w-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -350,7 +401,16 @@ const DoctorPatients = () => {
         {/* Patient Statistics */}
         {patients.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Patient Statistics</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Patient Statistics</h3>
+              <button
+                onClick={() => navigate('/doctor/medical-records')}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <Stethoscope className="h-4 w-4 mr-2" />
+                View Medical Records
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
